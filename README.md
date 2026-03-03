@@ -26,27 +26,24 @@ We have reached the first major milestone: a working kernel that executes C code
 
 ### Quick Start
 
-```bash
 # Clone the repository
 git clone https://github.com/AlexanderRamancha/nxu.git
 cd nxu
 
 # Build and run in QEMU
 make clean
-make qemu# NXU Kernel
-NXU: Not X Unix
+make qemu
 
-Security-first from-scratch ARM64 kernel.
+**Expected output:**
 
-Expected output:
+NXU kernel initialized
 
-textNXU kernel initialized
-Requirements:
+**Requirements:**
 
 aarch64-linux-gnu-gcc and binutils-aarch64-linux-gnu
 QEMU (qemu-system-aarch64)
 
-Project Structure:
+**Project Structure:**
 nxu/
 ├── boot/arm64/          # Early boot and entry point
 ├── kernel/              # Core kernel code
@@ -55,11 +52,12 @@ nxu/
 ├── tools/               # Build helpers
 └── Makefile
 
-Why Contribute to NXU?
+**Why Contribute to NXU?**
 Modern mobile security still rests on decades-old kernel foundations.
 NXU offers a chance to build something cleaner, more auditable, and deliberately secure from the ground up.
 If you are interested in low-level systems programming, ARM64 architecture, or building a more secure foundation for mobile devices, you are welcome here.
-How to Contribute
+
+**How to Contribute**
 See CONTRIBUTING.md for details on:
 
 Development workflow
@@ -72,7 +70,7 @@ Documentation
 Architecture Overview
 Boot Process
 
-License
+**License**
 Licensed under the MIT License (open-core model).
 See LICENSE for full details.
 
@@ -81,4 +79,4 @@ It should be the foundation.
 — The NXU Project
 We are building the kernel that mobile devices deserve.
 
-Join us.
+**Join us.**
