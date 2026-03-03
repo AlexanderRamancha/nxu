@@ -1,0 +1,4 @@
+*.o *.elf *.bin *.img *.map
+*~ *.swp .DS_Store tags
+.vscode/ .idea/
+__pycache__/
