@@ -43,15 +43,6 @@ NXU kernel initialized
 aarch64-linux-gnu-gcc and binutils-aarch64-linux-gnu
 QEMU (qemu-system-aarch64)
 
-Project Structure:
-nxu/
-├── boot/arm64/          # Early boot and entry point
-├── kernel/              # Core kernel code
-├── drivers/             # Device drivers (PL011 UART first)
-├── docs/                # Documentation
-├── tools/               # Build helpers
-└── Makefile
-
 **Why Contribute to NXU?**
 Modern mobile security still rests on decades-old kernel foundations.
 NXU offers a chance to build something cleaner, more auditable, and deliberately secure from the ground up.
