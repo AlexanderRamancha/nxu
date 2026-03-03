@@ -43,7 +43,7 @@ NXU kernel initialized
 aarch64-linux-gnu-gcc and binutils-aarch64-linux-gnu
 QEMU (qemu-system-aarch64)
 
-**Project Structure:**
+Project Structure:
 nxu/
 ├── boot/arm64/          # Early boot and entry point
 ├── kernel/              # Core kernel code
