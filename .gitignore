@@ -1,4 +1,18 @@
-*.o *.elf *.bin *.img *.map
-*~ *.swp .DS_Store tags
-.vscode/ .idea/
-__pycache__/
+# Build artifacts
+*.o
+*.elf
+*.bin
+*.img
+*.map
+*.dis
+
+# Temporary / editor files
+*~
+*.swp
+.DS_Store
+tags
+cscope.*
+
+# QEMU snapshots, logs
+*.qcow2
+*.log
