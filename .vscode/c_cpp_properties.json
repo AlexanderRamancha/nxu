@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "NXU ARM64",
+            "compilerPath": "/usr/bin/aarch64-linux-gnu-gcc",
+
+            "includePath": [
+                "${workspaceFolder}/kernel/include",
+                "${workspaceFolder}/drivers",
+                "${workspaceFolder}/arch/arm64",
+                "${workspaceFolder}/arch/arm64/**"
+            ],
+
+            "defines": [
+                "__aarch64__"
+            ],
+
+            "cStandard": "c23",
+            "intelliSenseMode": "linux-gcc-arm64"
+        }
+    ],
+    "version": 4
+}
