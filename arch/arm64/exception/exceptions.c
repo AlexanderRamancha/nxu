@@ -1,40 +1,91 @@
-#include "uart/pl011.h"
-#include "exceptions.h"
+#include <nxu/interrupt_manager.h>
+#include <gic/gic.h>
 
-static const char* get_exception_class_name(unsigned long ec)
+/*
+ * Architecture map
+ *
+ *     ARM64 IRQ vector
+ *            |
+ *            v
+ *     nxu_irq_handler()
+ *            |
+ *            v
+ *     ICC_IAR1_EL1
+ *            |
+ *            v
+ *     interrupt manager
+ *            |
+ *            v
+ *        handler
+ *            |
+ *            v
+ *     ICC_EOIR1_EL1
+ *            |
+ *            v
+ *       acknowledge next
+ *
+ * The exception layer does not contain interrupt policy.
+ */
+
+#define NXU_GIC_SPECIAL_INTID 1020U
+
+
+void
+nxu_irq_handler(void)
 {
-    switch (ec) {
-        case 0x00: return "Unknown reason";
-        case 0x01: return "WFx trap";
-        case 0x15: return "SVC from lower EL";
-        case 0x20: return "Instruction abort (lower EL)";
-        case 0x21: return "Instruction abort (current EL)";
-        case 0x24: return "Data abort (current EL)";
-        case 0x25: return "Data abort (lower EL)";
-        default:   return "Unknown exception class";
+    nxu_u32 intid;
+
+    for (;;) {
+
+        intid =
+            nxu_gic_acknowledge_interrupt();
+
+        if (intid >= NXU_GIC_SPECIAL_INTID)
+            break;
+
+        nxu_interrupt_dispatch(intid);
+
+        nxu_gic_end_interrupt(intid);
     }
 }
 
-void handle_sync_exception(void)
+
+void
+handle_sync_exception(void)
 {
-    unsigned long esr, far, elr, spsr;
+    nxu_u64 esr;
+    nxu_u64 elr;
+    nxu_u64 far;
 
-    asm volatile("mrs %0, ESR_EL1"  : "=r"(esr));
-    asm volatile("mrs %0, FAR_EL1"  : "=r"(far));
-    asm volatile("mrs %0, ELR_EL1"  : "=r"(elr));
-    asm volatile("mrs %0, SPSR_EL1" : "=r"(spsr));
+    asm volatile(
+        "mrs %0, esr_el1"
+        : "=r"(esr)
+        :
+        : "memory"
+    );
 
-    unsigned long ec = (esr >> 26) & 0x3F;
+    asm volatile(
+        "mrs %0, elr_el1"
+        : "=r"(elr)
+        :
+        : "memory"
+    );
 
-    uart_puts("\r\n*** SYNCHRONOUS EXCEPTION ***\r\n");
-    uart_puts("Exception Class : 0x"); uart_puthex(ec);
-    uart_puts(" ("); uart_puts(get_exception_class_name(ec)); uart_puts(")\r\n");
-    uart_puts("FAR_EL1         : 0x"); uart_puthex(far);  uart_puts("\r\n");
-    uart_puts("ELR_EL1         : 0x"); uart_puthex(elr);  uart_puts("\r\n");
-    uart_puts("SPSR_EL1        : 0x"); uart_puthex(spsr); uart_puts("\r\n");
-    uart_puts("\r\nKernel halted.\r\n");
+    asm volatile(
+        "mrs %0, far_el1"
+        : "=r"(far)
+        :
+        : "memory"
+    );
 
-    while (1) {
-        asm volatile("wfi");
+    (void)esr;
+    (void)elr;
+    (void)far;
+
+    for (;;) {
+        asm volatile(
+            "wfi"
+            ::: "memory"
+        );
     }
 }
