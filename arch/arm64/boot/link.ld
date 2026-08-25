@@ -25,10 +25,26 @@ SECTIONS {
     }
 
     .stack (NOLOAD) : ALIGN(16) {
-        __stack_bottom = .;
-        . += 0x20000;
-        __stack_top = .;
-    }
+    __stack_bottom = .;
 
+    /*
+     * Primary CPU stack.
+     */
+
+    . += 0x20000;
+    __stack_top = .;
+
+    /*
+     * Secondary CPU stacks.
+     *
+     * Each CPU receives its own 128 KiB stack.
+     */
+     
+    __secondary_stack_cpu1_bottom = .;
+    . += 0x20000;
+    __secondary_stack_cpu1_top = .;
+
+    __secondary_stack_end = .;
+}
     /DISCARD/ : { *(.comment) *(.eh_frame) }
 }
