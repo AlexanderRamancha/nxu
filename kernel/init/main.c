@@ -1,5 +1,6 @@
 #include <nxu/types.h>
 #include <nxu/cpu.h>
+#include <nxu/timer.h>
 #include <gic/gic.h>
 #include <nxu/interrupt_manager.h>
 #include <nxu/interrupt_backend.h>
@@ -124,6 +125,19 @@ kernel_main(void)
      * Architecture-specific interrupt backend.
      */
     nxu_gic_interrupt_backend_init();
+
+
+    /*
+     * Generic Timer.
+     *
+     * The timer uses the ARM Generic Timer PPI, so the
+     * interrupt subsystem must already be ready.
+     */
+    result =
+        nxu_timer_init();
+
+    if (result != 0)
+        nxu_kernel_halt();
 
 
     /*
