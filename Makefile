@@ -15,6 +15,7 @@ C_SOURCES := \
 	arch/arm64/exception/exceptions.c \
 	kernel/init/main.c \
 	kernel/mmio.c \
+	kernel/timer.c \
 	drivers/uart/pl011.c \
 	arch/arm64/gic/gic.c \
 	kernel/interrupt/interrupt_manager.c \
