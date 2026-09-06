@@ -1,3 +1,22 @@
+/*
+ * Architecture map
+ *
+ *   interrupt manager
+ *         |
+ *         v
+ *   gic_backend
+ *         |
+ *         +-- configure (priority, trigger, route, group)
+ *         +-- enable
+ *         +-- disable
+ *         |
+ *         v
+ *   GICD / GICR registers
+ *
+ * Pure hardware backend.
+ * No policy decisions.
+ */
+
 #include <nxu/interrupt.h>
 #include <nxu/interrupt_manager.h>
 #include <nxu/interrupt_backend.h>
@@ -450,9 +469,30 @@ gic_local_disable(
     return 0;
 }
 
+int
+nxu_gic_configure_local_ppi(
+    nxu_u32 cpu_id,
+    nxu_u32 intid,
+    nxu_u8 priority
+)
+{
+    if (intid < 16U || intid >= 32U)
+        return -1;
+
+    if (gic_local_group1(cpu_id, intid) != 0)
+        return -1;
+
+    if (gic_local_priority(cpu_id, intid, priority) != 0)
+        return -1;
+
+    if (gic_local_enable(cpu_id, intid) != 0)
+        return -1;
+
+    return 0;
+}
+
 /* nxu_gic_create_interrupt: function. */
 int
-/* nxu_gic_create_interrupt: function. */
 nxu_gic_create_interrupt(
     nxu_u32 intid,
     struct nxu_interrupt *interrupt

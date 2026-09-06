@@ -1,458 +1,300 @@
+/*
+ * Architecture map
+ *
+ *   platform bases
+ *         |
+ *         v
+ *   discover TYPER / security / redistributors
+ *         |
+ *         v
+ *   distributor init (Group 1, clear pending, default-deny)
+ *         |
+ *         v
+ *   per-CPU redistributor wake + local Group 1 + CPU interface
+ *         |
+ *         v
+ *   runtime: ICC_IAR1 / ICC_EOIR1 / ICC_SGI1R
+ *
+ * All enable bits start cleared.
+ * Bounded wait on redistributor wake.
+ */
+
 #include "gic.h"
 #include "gic_reg.h"
 
 #include <nxu/mmio.h>
-#include <uart/pl011.h>
+#include <nxu/panic.h>
+#include <nxu/console.h>
 
-#include "../platform/platform.h"
-
-
-/*
- * Architecture map
- *
- *     Platform
- *        |
- *        +-- GIC Distributor base
- *        +-- GIC Redistributor base
- *        |
- *        v
- *     GIC discovery
- *        |
- *        +-- Distributor capabilities
- *        +-- Security model
- *        +-- Redistributor topology
- *        +-- CPU affinity
- *        |
- *        v
- *     GIC initialization
- *        |
- *        +-- Distributor
- *        +-- Redistributor
- *        +-- CPU interface
- *        |
- *        v
- *     Runtime
- *        |
- *        +-- acknowledge interrupt
- *        +-- end interrupt
- *        +-- send SGI
- *
- * This file implements GICv3 hardware behaviour.
- *
- * Platform-specific physical addresses are supplied
- * by the platform layer.
- */
-
-
-/*
- * ==========================================================================
- * Global GIC state
- * ==========================================================================
- */
+#include "platform/platform.h"
 
 struct nxu_gic nxu_gic;
 
-
-/*
- * ==========================================================================
- * Distributor access
- * ==========================================================================
- */
-
 static nxu_u32
-gicd_read(
-    nxu_u32 offset
-)
+gicd_read(nxu_u32 offset)
 {
-    return mmio_read32(
-        nxu_gic.distributor_base + offset
-    );
+    return mmio_read32(nxu_gic.distributor_base + offset);
 }
-
 
 static void
-gicd_write(
-    nxu_u32 offset,
-    nxu_u32 value
-)
+gicd_write(nxu_u32 offset, nxu_u32 value)
 {
-    mmio_write32(
-        nxu_gic.distributor_base + offset,
-        value
-    );
+    mmio_write32(nxu_gic.distributor_base + offset, value);
 }
 
 
 /*
- * ==========================================================================
- * Distributor discovery
- * ==========================================================================
+ * ============================================================
+ * GIC DISCOVERY
+ * ============================================================
  */
 
 static void
 gic_discover_typer(void)
 {
-    nxu_u32 typer;
-    nxu_u32 it_lines;
-    nxu_u32 id_bits;
+    nxu_u32 typer = gicd_read(GICD_TYPER);
+    nxu_u32 it_lines =
+        (typer >> GICD_TYPER_ITLINES_SHIFT) & GICD_TYPER_ITLINES_MASK;
+    nxu_u32 id_bits =
+        (typer >> GICD_TYPER_IDBITS_SHIFT) & GICD_TYPER_IDBITS_MASK;
 
+    nxu_gic.distributor_typer = typer;
+    nxu_gic.interrupt_count   = 32U * (it_lines + 1U);
+    nxu_gic.intid_bits        = id_bits + 1U;
+    nxu_gic.priority_bits     = 5U;
 
-    typer =
-        gicd_read(GICD_TYPER);
+    nxu_console_puts("[GIC] GICD_TYPER = 0x");
+    nxu_console_puthex((unsigned long)typer);
+    nxu_console_puts("\r\n");
 
+    nxu_console_puts("[GIC] interrupt capacity = ");
+    nxu_console_putu32((unsigned long)nxu_gic.interrupt_count);
+    nxu_console_puts("\r\n");
 
-    nxu_gic.distributor_typer =
-        typer;
+    nxu_console_puts("[GIC] INTID bits = ");
+    nxu_console_putu32((unsigned long)nxu_gic.intid_bits);
+    nxu_console_puts("\r\n");
 
-
-    it_lines =
-        (typer >> GICD_TYPER_ITLINES_SHIFT) &
-        GICD_TYPER_ITLINES_MASK;
-
-
-    id_bits =
-        (typer >> GICD_TYPER_IDBITS_SHIFT) &
-        GICD_TYPER_IDBITS_MASK;
-
-
-    /*
-     * ITLinesNumber encodes the number of
-     * 32-interrupt blocks minus one.
-     */
-    nxu_gic.interrupt_count =
-        32U * (it_lines + 1U);
-
-
-    /*
-     * IDbits encodes the number of implemented
-     * INTID bits minus one.
-     */
-    nxu_gic.intid_bits =
-        id_bits + 1U;
+    nxu_console_puts("[GIC] priority bits = ");
+    nxu_console_putu32((unsigned long)nxu_gic.priority_bits);
+    nxu_console_puts("\r\n");
 }
-
 
 static void
 gic_discover_security(void)
 {
-    nxu_u32 ctlr;
+    nxu_u32 ctlr = gicd_read(GICD_CTLR);
 
+    nxu_gic.distributor_control = ctlr;
 
-    ctlr =
-        gicd_read(GICD_CTLR);
+    nxu_console_puts("[GIC] GICD_CTLR = 0x");
+    nxu_console_puthex((unsigned long)ctlr);
+    nxu_console_puts("\r\n");
 
+    if (ctlr & GICD_CTLR_DS) {
+        nxu_gic.features |= NXU_GIC_FEATURE_SINGLE_SECURITY;
 
-    nxu_gic.distributor_control =
-        ctlr;
-
-
-    if (ctlr & GICD_CTLR_DS)
-        nxu_gic.features |=
-            NXU_GIC_FEATURE_SINGLE_SECURITY;
+        nxu_console_puts("[GIC] security model: single-security-state\r\n");
+    } else {
+        nxu_console_puts("[GIC] security model: dual-security-state\r\n");
+    }
 }
-
-
-/*
- * ==========================================================================
- * Redistributor discovery
- * ==========================================================================
- *
- * Each Redistributor corresponds to one processing element.
- *
- * NXU records:
- *
- *     logical CPU
- *     GIC affinity
- *     Redistributor address
- *
- * GICR_TYPER.LAST identifies the final Redistributor.
- */
 
 static int
 gic_discover_redistributors(void)
 {
-    nxu_uptr base;
+    nxu_uptr base = nxu_gic.redistributor_base;
+    nxu_uptr stride = nxu_gic.redistributor_stride
+                      ? nxu_gic.redistributor_stride
+                      : GICR_FRAME_SIZE;
     nxu_u32 cpu;
 
+    nxu_gic.cpu_count = 0U;
 
-    base =
-        nxu_gic.redistributor_base;
+    nxu_console_puts("[GIC] discovering redistributors\r\n");
 
+    for (cpu = 0U; cpu < NXU_MAX_CPUS; cpu++) {
+        nxu_u64 typer = mmio_read64(base + GICR_TYPER);
+        nxu_u64 affinity = typer >> 32;
 
-    nxu_gic.cpu_count =
-        0U;
-
-
-    for (
-        cpu = 0U;
-        cpu < NXU_MAX_CPUS;
-        cpu++
-    ) {
-
-        nxu_u64 typer;
-        nxu_u64 affinity;
-
-
-        typer =
-            mmio_read64(
-                base + GICR_TYPER
-            );
-
-
-        affinity =
-            typer >> 32;
-
-
-        nxu_gic.cpu[cpu].logical_id =
-            cpu;
-
-
-        nxu_gic.cpu[cpu].affinity =
-            affinity;
-
-
-        nxu_gic.cpu[cpu].redistributor_base =
-            base;
-
-
-        nxu_gic.cpu[cpu].initialized =
-            0U;
-
+        nxu_gic.cpu[cpu].logical_id         = cpu;
+        nxu_gic.cpu[cpu].affinity           = affinity;
+        nxu_gic.cpu[cpu].redistributor_base = base;
+        nxu_gic.cpu[cpu].initialized        = 0U;
 
         nxu_gic.cpu_count++;
 
+        nxu_console_puts("[GIC] CPU ");
+        nxu_console_putu32((unsigned long)cpu);
+
+        nxu_console_puts(": redistributor = 0x");
+        nxu_console_puthex((unsigned long)base);
+
+        nxu_console_puts(", affinity = 0x");
+        nxu_console_puthex((unsigned long)affinity);
+
+        nxu_console_puts("\r\n");
 
         if (typer & GICR_TYPER_LAST)
             break;
 
-
-        base +=
-            GICR_FRAME_SIZE;
+        base += stride;
     }
 
+    nxu_console_puts("[GIC] redistributors discovered = ");
+    nxu_console_putu32((unsigned long)nxu_gic.cpu_count);
+    nxu_console_puts("\r\n");
 
-    if (nxu_gic.cpu_count == 0U)
-        return -1;
-
-
-    return 0;
+    return (nxu_gic.cpu_count == 0U) ? -1 : 0;
 }
-
-
-/*
- * ==========================================================================
- * GIC discovery
- * ==========================================================================
- */
 
 int
 nxu_gic_discover(void)
 {
-    const struct nxu_platform *platform;
+    const struct nxu_platform *platform = nxu_platform_get();
 
-    platform =
-        nxu_platform_get();
-
-    if (platform == 0)
+    if (!platform)
         return -1;
 
-    nxu_gic.distributor_base =
-        platform->gic_distributor_base;
+    nxu_console_puts("[GIC] platform information\r\n");
 
-    nxu_gic.redistributor_base =
-        platform->gic_redistributor_base;
+    nxu_console_puts("[GIC] distributor = 0x");
+    nxu_console_puthex((unsigned long)platform->gic_distributor_base);
+    nxu_console_puts("\r\n");
 
-    nxu_gic.distributor_typer = 0U;
+    nxu_console_puts("[GIC] redistributor = 0x");
+    nxu_console_puthex((unsigned long)platform->gic_redistributor_base);
+    nxu_console_puts("\r\n");
+
+    nxu_console_puts("[GIC] redistributor stride = 0x");
+    nxu_console_puthex((unsigned long)platform->gic_redistributor_stride);
+    nxu_console_puts("\r\n");
+
+    nxu_gic.distributor_base     = platform->gic_distributor_base;
+    nxu_gic.redistributor_base   = platform->gic_redistributor_base;
+    nxu_gic.redistributor_stride = platform->gic_redistributor_stride;
+
+    nxu_gic.distributor_typer   = 0U;
     nxu_gic.distributor_control = 0U;
-    nxu_gic.interrupt_count = 0U;
-    nxu_gic.intid_bits = 0U;
-    nxu_gic.priority_bits = 0U;
-    nxu_gic.implementation_id = 0U;
-    nxu_gic.redistributor_typer = 0U;
-    nxu_gic.cpu_count = 0U;
-    nxu_gic.features = 0U;
+    nxu_gic.interrupt_count     = 0U;
+    nxu_gic.intid_bits          = 0U;
+    nxu_gic.priority_bits       = 0U;
+    nxu_gic.implementation_id   = 0U;
+    nxu_gic.cpu_count           = 0U;
+    nxu_gic.features            = 0U;
 
-    uart_puts("GIC: typer\r\n");
+    nxu_console_puts("[GIC] reading distributor properties\r\n");
 
     gic_discover_typer();
 
-    uart_puts("GIC: iidr\r\n");
+    nxu_gic.implementation_id = gicd_read(GICD_IIDR);
 
-    nxu_gic.implementation_id =
-        gicd_read(GICD_IIDR);
-
-    uart_puts("GIC: security\r\n");
+    nxu_console_puts("[GIC] GICD_IIDR = 0x");
+    nxu_console_puthex((unsigned long)nxu_gic.implementation_id);
+    nxu_console_puts("\r\n");
 
     gic_discover_security();
-
-    uart_puts("GIC: redistributors\r\n");
 
     if (gic_discover_redistributors() != 0)
         return -1;
 
-    uart_puts("GIC: topology ready\r\n");
+    nxu_gic.features |= NXU_GIC_FEATURE_AFFINITY_ROUTING;
 
-    nxu_gic.features |=
-        NXU_GIC_FEATURE_AFFINITY_ROUTING;
-
-    nxu_gic.priority_bits =
-        5U;
+    nxu_console_puts("[GIC] affinity routing capability recorded\r\n");
 
     return 0;
 }
 
+
 /*
- * ==========================================================================
- * Redistributor wake-up
- * ==========================================================================
+ * ============================================================
+ * GIC REDISTRIBUTOR
+ * ============================================================
  */
 
 static int
-gic_wake_redistributor(
-    nxu_uptr rdist
-)
+gic_wake_redistributor(nxu_uptr rdist)
 {
     nxu_u32 waker;
 
+    nxu_console_puts("[GIC] waking redistributor at 0x");
+    nxu_console_puthex((unsigned long)rdist);
+    nxu_console_puts("\r\n");
 
-    waker =
-        mmio_read32(
-            rdist + GICR_WAKER
-        );
+    waker = mmio_read32(rdist + GICR_WAKER);
 
+    nxu_console_puts("[GIC] GICR_WAKER before = 0x");
+    nxu_console_puthex((unsigned long)waker);
+    nxu_console_puts("\r\n");
 
-    waker &=
-        ~GICR_WAKER_PROCESSOR_SLEEP;
+    waker &= ~GICR_WAKER_PROCESSOR_SLEEP;
 
+    mmio_write32(rdist + GICR_WAKER, waker);
 
-    mmio_write32(
-        rdist + GICR_WAKER,
-        waker
-    );
+    asm volatile("dsb sy" ::: "memory");
 
+    for (nxu_u32 i = 0; i < 100000U; i++) {
+        waker = mmio_read32(rdist + GICR_WAKER);
 
-    asm volatile(
-        "dsb sy"
-        ::: "memory"
-    );
+        if ((waker & GICR_WAKER_CHILDREN_ASLEEP) == 0U) {
+            nxu_console_puts("[GIC] redistributor awake\r\n");
+            return 0;
+        }
+    }
 
+    nxu_console_puts("[GIC] ERROR: redistributor wake timeout\r\n");
 
-    /*
-     * Wait until the Redistributor reports that
-     * its children are awake.
-     */
-    do {
+    return -1;
+}
 
-        waker =
-            mmio_read32(
-                rdist + GICR_WAKER
-            );
+static int
+gic_configure_local_group1(nxu_uptr rdist)
+{
+    nxu_console_puts("[GIC] configuring local interrupts as Group 1\r\n");
 
-    } while (
-        waker &
-        GICR_WAKER_CHILDREN_ASLEEP
-    );
+    mmio_write32(rdist + GICR_IGROUPR0, 0xFFFFFFFFU);
 
+    asm volatile("dsb sy" ::: "memory");
+
+    if (mmio_read32(rdist + GICR_IGROUPR0) == 0xFFFFFFFFU) {
+        nxu_console_puts("[GIC] local Group 1 configuration verified\r\n");
+        return 0;
+    }
+
+    nxu_console_puts("[GIC] ERROR: local Group 1 verification failed\r\n");
+
+    return -1;
+}
+
+static int
+gic_disable_local_interrupts(nxu_uptr rdist)
+{
+    nxu_console_puts("[GIC] disabling local interrupt enables\r\n");
+
+    mmio_write32(rdist + GICR_ICENABLER0, 0xFFFFFFFFU);
+
+    asm volatile("dsb sy" ::: "memory");
+
+    return 0;
+}
+
+static int
+gic_clear_local_pending(nxu_uptr rdist)
+{
+    nxu_console_puts("[GIC] clearing local pending interrupts\r\n");
+
+    mmio_write32(rdist + GICR_ICPENDR0, 0xFFFFFFFFU);
+
+    asm volatile("dsb sy" ::: "memory");
 
     return 0;
 }
 
 
 /*
- * ==========================================================================
- * CPU-local interrupt groups
- * ==========================================================================
- */
-
-static int
-gic_configure_local_group1(
-    nxu_uptr rdist
-)
-{
-    nxu_u32 value;
-
-
-    /*
-     * SGIs and PPIs use Group 1.
-     */
-    mmio_write32(
-        rdist + GICR_IGROUPR0,
-        0xFFFFFFFFU
-    );
-
-
-    asm volatile(
-        "dsb sy"
-        ::: "memory"
-    );
-
-
-    value =
-        mmio_read32(
-            rdist + GICR_IGROUPR0
-        );
-
-
-    if (value != 0xFFFFFFFFU)
-        return -1;
-
-
-    return 0;
-}
-
-
-/*
- * ==========================================================================
- * CPU-local interrupt state
- * ==========================================================================
- */
-
-static int
-gic_disable_local_interrupts(
-    nxu_uptr rdist
-)
-{
-    mmio_write32(
-        rdist + GICR_ICENABLER0,
-        0xFFFFFFFFU
-    );
-
-
-    asm volatile(
-        "dsb sy"
-        ::: "memory"
-    );
-
-
-    return 0;
-}
-
-
-static int
-gic_clear_local_pending(
-    nxu_uptr rdist
-)
-{
-    mmio_write32(
-        rdist + GICR_ICPENDR0,
-        0xFFFFFFFFU
-    );
-
-
-    asm volatile(
-        "dsb sy"
-        ::: "memory"
-    );
-
-
-    return 0;
-}
-
-
-/*
- * ==========================================================================
- * CPU interface
- * ==========================================================================
+ * ============================================================
+ * GIC CPU INTERFACE
+ * ============================================================
  */
 
 static int
@@ -460,555 +302,291 @@ gic_cpu_interface_init(void)
 {
     nxu_u64 value;
 
+    nxu_console_puts("[GIC] enabling system register interface\r\n");
 
-    /*
-     * Enable access to the GIC CPU interface
-     * through system registers.
-     */
-    asm volatile(
-        "mrs %0, ICC_SRE_EL1"
-        : "=r"(value)
-        :
-        : "memory"
-    );
+    asm volatile("mrs %0, ICC_SRE_EL1"
+                 : "=r"(value)
+                 :
+                 : "memory");
 
+    value |= 1ULL;
 
-    value |=
-        1ULL;
+    asm volatile("msr ICC_SRE_EL1, %0"
+                 :
+                 : "r"(value)
+                 : "memory");
 
+    asm volatile("isb" ::: "memory");
 
-    asm volatile(
-        "msr ICC_SRE_EL1, %0"
-        :
-        : "r"(value)
-        : "memory"
-    );
+    nxu_console_puts("[GIC] configuring ICC_CTLR_EL1\r\n");
 
+    asm volatile("mrs %0, ICC_CTLR_EL1"
+                 : "=r"(value)
+                 :
+                 : "memory");
 
-    asm volatile(
-        "isb"
-        ::: "memory"
-    );
+    value &= ~(1ULL << 1);
 
+    asm volatile("msr ICC_CTLR_EL1, %0"
+                 :
+                 : "r"(value)
+                 : "memory");
 
-    /*
-     * Use GIC EOI mode 0.
-     */
-    asm volatile(
-        "mrs %0, ICC_CTLR_EL1"
-        : "=r"(value)
-        :
-        : "memory"
-    );
+    asm volatile("isb" ::: "memory");
 
+    nxu_console_puts("[GIC] setting priority mask = 0xFF\r\n");
 
-    value &=
-        ~(1ULL << 1);
+    asm volatile("msr ICC_PMR_EL1, %0"
+                 :
+                 : "r"(0xFFULL)
+                 : "memory");
 
+    asm volatile("isb" ::: "memory");
 
-    asm volatile(
-        "msr ICC_CTLR_EL1, %0"
-        :
-        : "r"(value)
-        : "memory"
-    );
+    nxu_console_puts("[GIC] enabling Group 1 interrupts\r\n");
 
+    asm volatile("msr ICC_IGRPEN1_EL1, %0"
+                 :
+                 : "r"(1ULL)
+                 : "memory");
 
-    asm volatile(
-        "isb"
-        ::: "memory"
-    );
+    asm volatile("isb" ::: "memory");
 
-
-    /*
-     * Allow all implemented priorities.
-     */
-    asm volatile(
-        "msr ICC_PMR_EL1, %0"
-        :
-        : "r"(0xFFULL)
-        : "memory"
-    );
-
-
-    asm volatile(
-        "isb"
-        ::: "memory"
-    );
-
-
-    /*
-     * Enable Non-secure Group 1 interrupts.
-     */
-    asm volatile(
-        "msr ICC_IGRPEN1_EL1, %0"
-        :
-        : "r"(1ULL)
-        : "memory"
-    );
-
-
-    asm volatile(
-        "isb"
-        ::: "memory"
-    );
-
+    nxu_console_puts("[GIC] CPU interface ready\r\n");
 
     return 0;
 }
 
 
 /*
- * ==========================================================================
- * Distributor initialization
- * ==========================================================================
+ * ============================================================
+ * GIC DISTRIBUTOR
+ * ============================================================
  */
 
 static int
 gic_distributor_init(void)
 {
-    nxu_u32 ctlr;
-    nxu_u32 registers;
+    nxu_u32 registers = (nxu_gic.interrupt_count + 31U) / 32U;
     nxu_u32 i;
 
+    nxu_console_puts("[GIC] initializing distributor\r\n");
 
-    /*
-     * Disable the Distributor while configuring it.
-     */
-    gicd_write(
-        GICD_CTLR,
-        0U
-    );
+    nxu_console_puts("[GIC] distributor register groups = ");
+    nxu_console_putu32((unsigned long)registers);
+    nxu_console_puts("\r\n");
 
+    nxu_console_puts("[GIC] disabling distributor before configuration\r\n");
 
-    asm volatile(
-        "dsb sy"
-        ::: "memory"
-    );
+    gicd_write(GICD_CTLR, 0U);
 
+    asm volatile("dsb sy" ::: "memory");
 
-    registers =
-        (nxu_gic.interrupt_count + 31U) /
-        32U;
+    nxu_console_puts("[GIC] configuring SPI Group 1\r\n");
 
+    for (i = 1U; i < registers; i++)
+        gicd_write(GICD_IGROUPR + (i * 4U), 0xFFFFFFFFU);
 
-    /*
-     * SPIs are Group 1.
-     *
-     * Register zero contains SGIs and PPIs,
-     * so it is intentionally excluded.
-     */
-    for (
-        i = 1U;
-        i < registers;
-        i++
-    ) {
+    nxu_console_puts("[GIC] clearing SPI pending state\r\n");
 
-        gicd_write(
-            GICD_IGROUPR +
-            (i * 4U),
-            0xFFFFFFFFU
-        );
-    }
+    for (i = 1U; i < registers; i++)
+        gicd_write(GICD_ICPENDR + (i * 4U), 0xFFFFFFFFU);
 
+    nxu_console_puts("[GIC] disabling SPI interrupts\r\n");
 
-    /*
-     * Clear stale SPI pending state.
-     */
-    for (
-        i = 1U;
-        i < registers;
-        i++
-    ) {
+    for (i = 1U; i < registers; i++)
+        gicd_write(GICD_ICENABLER + (i * 4U), 0xFFFFFFFFU);
 
-        gicd_write(
-            GICD_ICPENDR +
-            (i * 4U),
-            0xFFFFFFFFU
-        );
-    }
+    nxu_console_puts("[GIC] enabling distributor Group 1\r\n");
 
+    gicd_write(GICD_CTLR,
+               GICD_CTLR_ARE_NS |
+               GICD_CTLR_ENABLE_GRP1_NS);
 
-    /*
-     * Default-deny:
-     *
-     * SPIs remain disabled until the
-     * interrupt manager explicitly enables them.
-     */
-    for (
-        i = 1U;
-        i < registers;
-        i++
-    ) {
+    asm volatile("dsb sy" ::: "memory");
 
-        gicd_write(
-            GICD_ICENABLER +
-            (i * 4U),
-            0xFFFFFFFFU
-        );
-    }
+    nxu_gic.distributor_control = gicd_read(GICD_CTLR);
 
+    nxu_console_puts("[GIC] distributor control after init = 0x");
+    nxu_console_puthex((unsigned long)nxu_gic.distributor_control);
+    nxu_console_puts("\r\n");
 
-    /*
-     * Enable Non-secure Group 1 and
-     * Non-secure affinity routing.
-     */
-    ctlr =
-        GICD_CTLR_ARE_NS |
-        GICD_CTLR_ENABLE_GRP1_NS;
-
-
-    gicd_write(
-        GICD_CTLR,
-        ctlr
-    );
-
-
-    asm volatile(
-        "dsb sy"
-        ::: "memory"
-    );
-
-
-    nxu_gic.distributor_control =
-        gicd_read(GICD_CTLR);
-
+    nxu_console_puts("[GIC] distributor initialized\r\n");
 
     return 0;
 }
 
 
 /*
- * ==========================================================================
- * Per-CPU GIC initialization
- * ==========================================================================
- *
- * This function must execute on the CPU whose
- * Redistributor is being initialized.
+ * ============================================================
+ * PER-CPU GIC INITIALIZATION
+ * ============================================================
  */
 
 int
-nxu_gic_cpu_init(
-    nxu_u32 cpu_id
-)
+nxu_gic_cpu_init(nxu_u32 cpu_id)
 {
     nxu_uptr rdist;
-
 
     if (cpu_id >= nxu_gic.cpu_count)
         return -1;
 
+    rdist = nxu_gic.cpu[cpu_id].redistributor_base;
 
-    rdist =
-        nxu_gic.cpu[cpu_id]
-            .redistributor_base;
+    nxu_console_puts("[GIC] initializing logical CPU ");
+    nxu_console_putu32((unsigned long)cpu_id);
+    nxu_console_puts("\r\n");
 
+    nxu_console_puts("[GIC] CPU affinity = 0x");
+    nxu_console_puthex((unsigned long)nxu_gic.cpu[cpu_id].affinity);
+    nxu_console_puts("\r\n");
 
-    if (gic_wake_redistributor(
-            rdist
-        ) != 0)
+    nxu_console_puts("[GIC] redistributor base = 0x");
+    nxu_console_puthex((unsigned long)rdist);
+    nxu_console_puts("\r\n");
+
+    if (gic_wake_redistributor(rdist) != 0)
         return -1;
 
-
-    /*
-     * Default-deny local interrupts.
-     */
-    if (gic_disable_local_interrupts(
-            rdist
-        ) != 0)
+    if (gic_disable_local_interrupts(rdist) != 0)
         return -1;
 
-
-    /*
-     * Clear stale local pending state.
-     */
-    if (gic_clear_local_pending(
-            rdist
-        ) != 0)
+    if (gic_clear_local_pending(rdist) != 0)
         return -1;
 
-
-    /*
-     * Configure SGIs and PPIs as Group 1.
-     */
-    if (gic_configure_local_group1(
-            rdist
-        ) != 0)
+    if (gic_configure_local_group1(rdist) != 0)
         return -1;
 
-
-    /*
-     * Initialize the CPU interface.
-     */
     if (gic_cpu_interface_init() != 0)
         return -1;
 
+    nxu_gic.cpu[cpu_id].initialized = 1U;
 
-    nxu_gic.cpu[cpu_id]
-        .initialized = 1U;
-
+    nxu_console_puts("[GIC] CPU ");
+    nxu_console_putu32((unsigned long)cpu_id);
+    nxu_console_puts(" GIC initialization complete\r\n");
 
     return 0;
 }
 
 
 /*
- * ==========================================================================
- * Global GIC initialization
- * ==========================================================================
+ * ============================================================
+ * GIC INITIALIZATION
+ * ============================================================
  */
 
 int
-nxu_gic_init(void)
+nxu_gic_init(nxu_u32 boot_cpu_id)
 {
-    /*
-     * Discovery must complete first.
-     */
+    nxu_console_puts("[GIC] initialization starting\r\n");
+
+    nxu_console_puts("[GIC] boot CPU logical ID = ");
+    nxu_console_putu32((unsigned long)boot_cpu_id);
+    nxu_console_puts("\r\n");
+
     if (nxu_gic.interrupt_count == 0U ||
         nxu_gic.cpu_count == 0U)
         return -1;
 
-
-    /*
-     * Initialize the Distributor once.
-     */
     if (gic_distributor_init() != 0)
         return -1;
 
-
-    /*
-     * CPU0 initializes its local Redistributor
-     * and CPU interface.
-     */
-    if (nxu_gic_cpu_init(0U) != 0)
+    if (nxu_gic_cpu_init(boot_cpu_id) != 0)
         return -1;
 
+    nxu_console_puts("[GIC] initialization complete\r\n");
 
     return 0;
 }
 
 
 /*
- * ==========================================================================
- * Redistributor lookup
- * ==========================================================================
+ * ============================================================
+ * RUNTIME ACCESS
+ * ============================================================
  */
 
 nxu_uptr
-nxu_gic_get_redistributor(
-    nxu_u32 cpu_id
-)
+nxu_gic_get_redistributor(nxu_u32 cpu_id)
 {
     if (cpu_id >= nxu_gic.cpu_count)
         return 0U;
 
-
-    return nxu_gic.cpu[cpu_id]
-        .redistributor_base;
+    return nxu_gic.cpu[cpu_id].redistributor_base;
 }
 
-
-/*
- * ==========================================================================
- * CPU affinity lookup
- * ==========================================================================
- */
-
 int
-nxu_gic_get_affinity(
-    nxu_u32 cpu_id,
-    nxu_u64 *affinity
-)
+nxu_gic_get_affinity(nxu_u32 cpu_id, nxu_u64 *affinity)
 {
-    if (affinity == 0)
+    if (!affinity || cpu_id >= nxu_gic.cpu_count)
         return -1;
 
-
-    if (cpu_id >= nxu_gic.cpu_count)
-        return -1;
-
-
-    *affinity =
-        nxu_gic.cpu[cpu_id]
-            .affinity;
-
+    *affinity = nxu_gic.cpu[cpu_id].affinity;
 
     return 0;
 }
-
-
-/*
- * ==========================================================================
- * Interrupt acknowledge
- * ==========================================================================
- */
 
 nxu_u32
 nxu_gic_acknowledge_interrupt(void)
 {
     nxu_u64 value;
 
-
-    asm volatile(
-        "mrs %0, ICC_IAR1_EL1"
-        : "=r"(value)
-        :
-        : "memory"
-    );
-
+    asm volatile("mrs %0, ICC_IAR1_EL1"
+                 : "=r"(value)
+                 :
+                 : "memory");
 
     return (nxu_u32)value;
 }
 
-
-/*
- * ==========================================================================
- * End of interrupt
- * ==========================================================================
- */
-
 void
-nxu_gic_end_interrupt(
-    nxu_u32 intid
-)
+nxu_gic_end_interrupt(nxu_u32 intid)
 {
-    asm volatile(
-        "msr ICC_EOIR1_EL1, %0"
-        :
-        : "r"((nxu_u64)intid)
-        : "memory"
-    );
+    asm volatile("msr ICC_EOIR1_EL1, %0"
+                 :
+                 : "r"((nxu_u64)intid)
+                 : "memory");
 
-
-    asm volatile(
-        "isb"
-        ::: "memory"
-    );
+    asm volatile("isb" ::: "memory");
 }
 
-
-/*
- * ==========================================================================
- * Send SGI
- * ==========================================================================
- *
- * ICC_SGI1R_EL1:
- *
- *     Aff3       [55:48]
- *     Aff2       [39:32]
- *     INTID      [27:24]
- *     Aff1       [23:16]
- *     TargetList [15:0]
- *
- * NXU currently sends an SGI to one target CPU.
- */
-
 int
-nxu_gic_send_sgi(
-    nxu_u32 target_cpu,
-    nxu_u32 intid
-)
+nxu_gic_send_sgi(nxu_u32 target_cpu, nxu_u32 intid)
 {
     nxu_u64 affinity;
     nxu_u64 value;
-
     nxu_u32 aff0;
     nxu_u32 aff1;
     nxu_u32 aff2;
     nxu_u32 aff3;
 
-
-    if (target_cpu >=
-        nxu_gic.cpu_count)
+    if (target_cpu >= nxu_gic.cpu_count || intid > 15U)
         return -1;
 
-
-    if (intid > 15U)
+    if (nxu_gic_get_affinity(target_cpu, &affinity) != 0)
         return -1;
 
+    aff0 = (nxu_u32)(affinity & 0xFFULL);
+    aff1 = (nxu_u32)((affinity >> 8) & 0xFFULL);
+    aff2 = (nxu_u32)((affinity >> 16) & 0xFFULL);
+    aff3 = (nxu_u32)((affinity >> 24) & 0xFFULL);
 
-    if (nxu_gic_get_affinity(
-            target_cpu,
-            &affinity
-        ) != 0)
-        return -1;
-
-
-    aff0 =
-        (nxu_u32)(
-            affinity & 0xFFULL
-        );
-
-
-    aff1 =
-        (nxu_u32)(
-            (affinity >> 8) &
-            0xFFULL
-        );
-
-
-    aff2 =
-        (nxu_u32)(
-            (affinity >> 16) &
-            0xFFULL
-        );
-
-
-    aff3 =
-        (nxu_u32)(
-            (affinity >> 24) &
-            0xFFULL
-        );
-
-
-    /*
-     * TargetList contains Aff0 values.
-     */
     if (aff0 >= 16U)
         return -1;
 
+    value  = ((nxu_u64)aff3) << 48;
+    value |= ((nxu_u64)aff2) << 32;
+    value |= ((nxu_u64)(intid & 0xFU)) << 24;
+    value |= ((nxu_u64)aff1) << 16;
+    value |= 1ULL << aff0;
 
-    value =
-        0ULL;
+    asm volatile("msr ICC_SGI1R_EL1, %0"
+                 :
+                 : "r"(value)
+                 : "memory");
 
-
-    value |=
-        ((nxu_u64)aff3)
-        << 48;
-
-
-    value |=
-        ((nxu_u64)aff2)
-        << 32;
-
-
-    value |=
-        ((nxu_u64)(intid & 0xFU))
-        << 24;
-
-
-    value |=
-        ((nxu_u64)aff1)
-        << 16;
-
-
-    value |=
-        1ULL << aff0;
-
-
-    asm volatile(
-        "msr ICC_SGI1R_EL1, %0"
-        :
-        : "r"(value)
-        : "memory"
-    );
-
-
-    asm volatile(
-        "isb"
-        ::: "memory"
-    );
-
+    asm volatile("isb" ::: "memory");
 
     return 0;
 }
