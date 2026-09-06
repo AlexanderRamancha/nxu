@@ -44,14 +44,32 @@ Security is not a checklist. It is a consequence of limiting power by default.
 Foundation stage.
 
 **Done**
-- ARM64 boot
-- UART console
-- Exception vectors + basic handling
+
+* ARM64 boot
+* UART console
+* Exception vectors + basic handling
+* Early physical memory map
+* Platform hardware description
+* DTB validation
+* GICv3 interrupt subsystem
+* Interrupt manager + backend
+* CPU topology + SMP startup
+* PSCI CPU startup
+* ARM Generic Timer
+* Structured logging
+* Kernel startup integration
+* 4-CPU QEMU validation
 
 **Next**
-- Generic Timer
-- Physical memory management
-- Capability primitives
+
+* Console subsystem
+* Panic and fatal-error handling
+* Capability primitives
+* Capability-based interrupt access
+* Additional SMP validation
+* Persistent diagnostic storage
+* Userspace/runtime architecture
+
 
 ---
 
@@ -59,8 +77,8 @@ Foundation stage.
 
 ```bash
 make          # Build
-make qemu     # Run in QEMU
 make clean
+make qemu     # Run in QEMU
 
 ```
 ---
