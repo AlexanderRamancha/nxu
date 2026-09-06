@@ -6,31 +6,24 @@
 /*
  * Architecture map
  *
- * Platform layer
+ *   platform description
+ *         |
+ *         +-- GIC distributor base
+ *         +-- GIC redistributor base
+ *         +-- redistributor stride
  *
- *     platform description
- *            |
- *            +-- GIC Distributor
- *            |
- *            +-- GIC Redistributors
- *            |
- *            +-- CPU topology
- *
- * The platform layer describes where hardware exists.
- *
- * It does not configure the hardware.
+ * Platform only describes where hardware lives.
+ * It does not configure hardware.
  */
 
 struct nxu_platform {
-
     nxu_uptr gic_distributor_base;
     nxu_uptr gic_redistributor_base;
+    nxu_uptr gic_redistributor_stride; /* 0 = use hardware default */
 };
 
-int
-nxu_platform_init(void);
-
-const struct nxu_platform *
-nxu_platform_get(void);
+int nxu_platform_init(void);
+int nxu_platform_memory_init(void);
+const struct nxu_platform *nxu_platform_get(void);
 
 #endif
