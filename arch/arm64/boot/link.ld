@@ -1,3 +1,18 @@
+/*
+ * Architecture map
+ *
+ *   load address 0x40080000
+ *         |
+ *         +-- .text (boot + vectors + code)
+ *         +-- .rodata
+ *         +-- .data
+ *         +-- .bss
+ *         +-- .stack (primary + secondary CPU1)
+ *
+ * Stacks are fixed size and NOLOAD.
+ * Entry point is _start.
+ */
+
 ENTRY(_start)
 
 SECTIONS {
