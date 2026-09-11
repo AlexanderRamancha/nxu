@@ -1,54 +1,25 @@
 #include <nxu/interrupt_manager.h>
-#include <gic/gic.h>
 
 /*
- * Architecture map
+ * ARM64 exception boundary
  *
- *     ARM64 IRQ vector
- *            |
- *            v
- *     nxu_irq_handler()
- *            |
- *            v
- *     ICC_IAR1_EL1
- *            |
- *            v
- *     interrupt manager
- *            |
- *            v
- *        handler
- *            |
- *            v
- *     ICC_EOIR1_EL1
- *            |
- *            v
- *       acknowledge next
- *
- * The exception layer does not contain interrupt policy.
+ * The exception layer only transfers control to the NXU interrupt
+ * manager. It has no knowledge of GIC operations or interrupt
+ * objects.
  */
-
-#define NXU_GIC_SPECIAL_INTID 1020U
-
 
 void
 nxu_irq_handler(void)
 {
-    nxu_u32 intid;
-
+    /*
+     * The manager owns the complete interrupt operation:
+     * identify -> validate -> dispatch -> complete.
+     */
     for (;;) {
-
-        intid =
-            nxu_gic_acknowledge_interrupt();
-
-        if (intid >= NXU_GIC_SPECIAL_INTID)
+        if (nxu_interrupt_handle() != 0)
             break;
-
-        nxu_interrupt_dispatch(intid);
-
-        nxu_gic_end_interrupt(intid);
     }
 }
-
 
 void
 handle_sync_exception(void)
@@ -83,9 +54,6 @@ handle_sync_exception(void)
     (void)far;
 
     for (;;) {
-        asm volatile(
-            "wfi"
-            ::: "memory"
-        );
+        asm volatile("wfi" ::: "memory");
     }
 }
