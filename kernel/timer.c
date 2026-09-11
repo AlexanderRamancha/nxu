@@ -181,7 +181,7 @@ nxu_timer_init(void)
             NXU_INTERRUPT_PPI,
             nxu_timer_interrupt_handler,
             0,
-            nxu_timer_interrupt
+            &nxu_timer_interrupt
         ) != 0
     )
         return -1;
@@ -196,13 +196,13 @@ nxu_timer_init(void)
         0U;
 
     if (nxu_interrupt_configure(
-            &nxu_timer_interrupt,
+            nxu_timer_interrupt,
             &config
         ) != 0)
         return -1;
 
     if (nxu_interrupt_enable(
-            &nxu_timer_interrupt
+            nxu_timer_interrupt
         ) != 0)
         return -1;
 
