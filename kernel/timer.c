@@ -1,13 +1,12 @@
 #include <nxu/timer.h>
 #include <nxu/interrupt_manager.h>
 #include <nxu/interrupt.h>
-#include <gic/gic.h>
 #include <uart/pl011.h>
 
 #define NXU_TIMER_PPI 30U
 #define NXU_TIMER_DEMO_PERIOD_US 1000000U
 
-static struct nxu_interrupt nxu_timer_interrupt;
+static struct nxu_interrupt *nxu_timer_interrupt;
 static nxu_u64 nxu_timer_freq;
 
 static nxu_u64
@@ -152,11 +151,9 @@ nxu_timer_stop(void)
 }
 
 static void
-nxu_timer_interrupt_handler(
-    struct nxu_interrupt *interrupt
-)
+nxu_timer_interrupt_handler(void *context)
 {
-    (void)interrupt;
+    (void)context;
 
     uart_puts(
         "NXU timer: tick\r\n"
@@ -178,17 +175,15 @@ nxu_timer_init(void)
     if (nxu_timer_freq == 0U)
         return -1;
 
-    if (nxu_gic_create_interrupt(
+    if (
+        nxu_interrupt_create(
             NXU_TIMER_PPI,
-            &nxu_timer_interrupt
-        ) != 0)
-        return -1;
-
-    if (nxu_interrupt_set_handler(
-            &nxu_timer_interrupt,
+            NXU_INTERRUPT_PPI,
             nxu_timer_interrupt_handler,
-            0
-        ) != 0)
+            0,
+            nxu_timer_interrupt
+        ) != 0
+    )
         return -1;
 
     config.trigger =
