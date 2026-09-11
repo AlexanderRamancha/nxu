@@ -14,8 +14,8 @@
  *         v
  *   hardware registers
  *
- * Backend performs only hardware operations.
- * Policy stays in the manager.
+ * Backend performs hardware mechanism only.
+ * Authority and interrupt semantics remain in the manager.
  */
 
 struct nxu_interrupt_backend {
@@ -23,9 +23,16 @@ struct nxu_interrupt_backend {
                      const struct nxu_interrupt_config *config);
     int (*enable)(struct nxu_interrupt *interrupt);
     int (*disable)(struct nxu_interrupt *interrupt);
+
+    nxu_u32 (*acknowledge)(void);
+    void (*complete)(nxu_u32 intid);
 };
 
-void nxu_interrupt_backend_register(const struct nxu_interrupt_backend *backend);
-const struct nxu_interrupt_backend *nxu_interrupt_backend_get(void);
+void nxu_interrupt_backend_register(
+    const struct nxu_interrupt_backend *backend
+);
+
+const struct nxu_interrupt_backend *
+nxu_interrupt_backend_get(void);
 
 #endif

@@ -59,11 +59,9 @@ nxu_test_pend_spi(
 
 /* Verify CPU1 owns its interrupt context. */
 static void
-nxu_test_sgi1_handler(
-    struct nxu_interrupt *interrupt
-)
+nxu_test_sgi1_handler(void *context)
 {
-    (void)interrupt;
+    (void)context;
 
     if (
         nxu_cpu_current_id() == 1U &&
@@ -79,11 +77,9 @@ nxu_test_sgi1_handler(
 
 /* Test lower-priority SPI execution and nested context. */
 static void
-nxu_test_spi32_handler(
-    struct nxu_interrupt *interrupt
-)
+nxu_test_spi32_handler(void *context)
 {
-    (void)interrupt;
+    (void)context;
 
     nxu_test_spi32_seen =
         1U;
@@ -149,11 +145,9 @@ nxu_test_spi32_handler(
 
 /* Test the nested higher-priority interrupt context. */
 static void
-nxu_test_spi33_handler(
-    struct nxu_interrupt *interrupt
-)
+nxu_test_spi33_handler(void *context)
 {
-    (void)interrupt;
+    (void)context;
 
     nxu_test_spi33_seen =
         1U;
@@ -179,9 +173,9 @@ nxu_test_spi33_handler(
 int
 nxu_interrupt_final_test(void)
 {
-    struct nxu_interrupt spi32;
-    struct nxu_interrupt spi33;
-    struct nxu_interrupt sgi1;
+    struct nxu_interrupt *spi32;
+    struct nxu_interrupt *spi33;
+    struct nxu_interrupt *sgi1;
 
     struct nxu_interrupt_config spi32_config;
     struct nxu_interrupt_config spi33_config;
@@ -203,18 +197,12 @@ nxu_interrupt_final_test(void)
     nxu_test_order[3] = 0U;
 
     if (
-        nxu_gic_create_interrupt(
+        nxu_interrupt_create(
             32U,
-            &spi32
-        ) != 0
-    )
-        return -1;
-
-    if (
-        nxu_interrupt_set_handler(
-            &spi32,
+            NXU_INTERRUPT_SPI,
             nxu_test_spi32_handler,
-            0
+            0,
+            &spi32
         ) != 0
     )
         return -1;
@@ -230,7 +218,7 @@ nxu_interrupt_final_test(void)
 
     if (
         nxu_interrupt_configure(
-            &spi32,
+            spi32,
             &spi32_config
         ) != 0
     )
@@ -238,24 +226,18 @@ nxu_interrupt_final_test(void)
 
     if (
         nxu_interrupt_enable(
-            &spi32
+            spi32
         ) != 0
     )
         return -1;
 
     if (
-        nxu_gic_create_interrupt(
+        nxu_interrupt_create(
             33U,
-            &spi33
-        ) != 0
-    )
-        return -1;
-
-    if (
-        nxu_interrupt_set_handler(
-            &spi33,
+            NXU_INTERRUPT_SPI,
             nxu_test_spi33_handler,
-            0
+            0,
+            &spi33
         ) != 0
     )
         return -1;
@@ -271,7 +253,7 @@ nxu_interrupt_final_test(void)
 
     if (
         nxu_interrupt_configure(
-            &spi33,
+            spi33,
             &spi33_config
         ) != 0
     )
@@ -279,24 +261,18 @@ nxu_interrupt_final_test(void)
 
     if (
         nxu_interrupt_enable(
-            &spi33
+            spi33
         ) != 0
     )
         return -1;
 
     if (
-        nxu_gic_create_interrupt(
+        nxu_interrupt_create(
             1U,
-            &sgi1
-        ) != 0
-    )
-        return -1;
-
-    if (
-        nxu_interrupt_set_handler(
-            &sgi1,
+            NXU_INTERRUPT_SGI,
             nxu_test_sgi1_handler,
-            0
+            0,
+            &sgi1
         ) != 0
     )
         return -1;
@@ -312,7 +288,7 @@ nxu_interrupt_final_test(void)
 
     if (
         nxu_interrupt_configure(
-            &sgi1,
+            sgi1,
             &sgi_config
         ) != 0
     )
@@ -320,7 +296,7 @@ nxu_interrupt_final_test(void)
 
     if (
         nxu_interrupt_enable(
-            &sgi1
+            sgi1
         ) != 0
     )
         return -1;

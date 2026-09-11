@@ -527,30 +527,6 @@ nxu_gic_get_affinity(nxu_u32 cpu_id, nxu_u64 *affinity)
     return 0;
 }
 
-nxu_u32
-nxu_gic_acknowledge_interrupt(void)
-{
-    nxu_u64 value;
-
-    asm volatile("mrs %0, ICC_IAR1_EL1"
-                 : "=r"(value)
-                 :
-                 : "memory");
-
-    return (nxu_u32)value;
-}
-
-void
-nxu_gic_end_interrupt(nxu_u32 intid)
-{
-    asm volatile("msr ICC_EOIR1_EL1, %0"
-                 :
-                 : "r"((nxu_u64)intid)
-                 : "memory");
-
-    asm volatile("isb" ::: "memory");
-}
-
 int
 nxu_gic_send_sgi(nxu_u32 target_cpu, nxu_u32 intid)
 {
