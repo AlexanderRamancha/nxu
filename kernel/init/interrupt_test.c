@@ -202,7 +202,7 @@ nxu_interrupt_final_test(void)
             NXU_INTERRUPT_SPI,
             nxu_test_spi32_handler,
             0,
-            spi32
+            &spi32
         ) != 0
     )
         return -1;
@@ -219,7 +219,7 @@ nxu_interrupt_final_test(void)
     if (
         nxu_interrupt_configure(
             spi32,
-            spi32_config
+            &spi32_config
         ) != 0
     )
         return -1;
@@ -237,7 +237,7 @@ nxu_interrupt_final_test(void)
             NXU_INTERRUPT_SPI,
             nxu_test_spi33_handler,
             0,
-            spi33
+            &spi33
         ) != 0
     )
         return -1;
@@ -254,7 +254,7 @@ nxu_interrupt_final_test(void)
     if (
         nxu_interrupt_configure(
             spi33,
-            spi33_config
+            &spi33_config
         ) != 0
     )
         return -1;
@@ -272,7 +272,7 @@ nxu_interrupt_final_test(void)
             NXU_INTERRUPT_SGI,
             nxu_test_sgi1_handler,
             0,
-            sgi1
+            &sgi1
         ) != 0
     )
         return -1;
