@@ -27,20 +27,6 @@
 #include "gic.h"
 #include "gic_reg.h"
 
-static enum nxu_interrupt_type
-gic_classify_intid(
-    nxu_u32 intid
-)
-{
-    if (intid < 16U)
-        return NXU_INTERRUPT_SGI;
-
-    if (intid < 32U)
-        return NXU_INTERRUPT_PPI;
-
-    return NXU_INTERRUPT_SPI;
-}
-
 /* gicd_priority_address: function. */
 static nxu_uptr
 gicd_priority_address(
