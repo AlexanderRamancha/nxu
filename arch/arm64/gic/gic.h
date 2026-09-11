@@ -2,7 +2,6 @@
 #define NXU_GIC_H
 
 #include <nxu/types.h>
-#include <nxu/interrupt.h>
 
 #ifndef NXU_MAX_CPUS
 #define NXU_MAX_CPUS 16U
@@ -70,7 +69,6 @@ nxu_u32 nxu_gic_acknowledge_interrupt(void);
 void nxu_gic_end_interrupt(nxu_u32 intid);
 int nxu_gic_send_sgi(nxu_u32 target_cpu, nxu_u32 intid);
 
-int nxu_gic_create_interrupt(nxu_u32 intid, struct nxu_interrupt *interrupt);
 void nxu_gic_interrupt_backend_init(void);
 
 int nxu_gic_configure_local_ppi(
