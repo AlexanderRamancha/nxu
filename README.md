@@ -1,124 +1,34 @@
 # NXU
 
-**A privacy-first mobile operating system built from first principles.**
+**Not eXactly Unix.**
 
-NXU (Not eXactly Unix) is an experimental ARM64 operating system that rethinks mobile OS design with privacy, minimalism, and explicit authority as foundational constraints — not features added later.
+A privacy-first kernel for a mobile machine.
 
----
+—
 
-## Philosophy
+This repository is the beginning.
 
-NXU begins with one question:
+The first public snapshot. Early ARM64 bring-up. It is not the kernel we are building now, and it is not the architecture we hold ourselves to.
 
-> What problem are we actually solving?
+NXU is still in original development. The work continues off this tree.
 
-Legacy complexity is rejected unless it can be justified. Every subsystem must earn its place.
+If you are reading the code here, you are looking at how it started — not at where it is.
 
-**Design Principles**
+—
 
-- **Privacy by construction** — Data exposure is minimized by architecture, not policy
-- **Explicit authority** — Capability-based security; no ambient ambient rights
-- **Minimal trusted computing base** — Reduce what must be trusted
-- **First-principles design** — Re-examine assumptions instead of inheriting them
-- **Simplicity over tradition** — Prefer clear mechanisms to legacy compatibility
-- **Inspectable systems** — Design decisions should be understandable
+**Why.** Unix asked who you are, then what you may touch. NXU asks what physically exists, and what is already wired. No root. No `/dev/uart`. No chmod later. Privacy is not a setting.
 
----
+**How.** Hardware first. Then an experiment that could fail. QEMU is the laboratory. ARM is the law. The phone is the destination.
 
-## Privacy & Security Approach
+**Where we are.** Foundation. Not a product. Laboratory demos include untrusted boot, default-deny occupant maps, MMU-denied peer RAM, and a timer path that does not map the GIC into the occupant. Not shown: a phone OS, formal proof, silicon, interrupt isolation, an occupant that cannot reprogram the MMU.
 
-Most systems treat privacy as an application-layer concern.  
-NXU treats it as a systems problem.
+**This tree.** Clone it for the origin story. Expect retired names and claims we took back. The living design is not published here yet.
 
-- Authority is granted through unforgeable capabilities, not global permissions
-- Components receive only the rights they need to perform a specific task
-- Isolation boundaries are enforced by the kernel, not by convention
-- User data paths are designed to be narrow and intentional
+—
 
-Security is not a checklist. It is a consequence of limiting power by default.
+Alexander Ramancha
 
----
+Users should own their systems.  
+Systems should not own their users.
 
-## Current Status
-
-Foundation stage.
-
-**Done**
-
-* ARM64 boot
-* UART console
-* Exception vectors + basic handling
-* Early physical memory map
-* Platform hardware description
-* DTB validation
-* GICv3 interrupt subsystem
-* Interrupt manager + backend
-* CPU topology + SMP startup
-* PSCI CPU startup
-* ARM Generic Timer
-* Structured logging
-* Kernel startup integration
-* 4-CPU QEMU validation
-
-**Next**
-
-* Console subsystem
-* Panic and fatal-error handling
-* Capability primitives
-* Capability-based interrupt access
-* Additional SMP validation
-* Persistent diagnostic storage
-* Userspace/runtime architecture
-
-
----
-
-## Build
-
-```bash
-make          # Build
-make clean
-make qemu     # Run in QEMU
-
-```
----
-
-## Structure
-
-- `arch/arm64/` — Architecture code (boot, exceptions)
-- `drivers/` — Hardware drivers
-- `kernel/` — Core kernel
-
-## Contributors
-
-Background doesn’t matter.
-
-Whether you’re a student, researcher, professional, or self-taught explorer — if you’re curious about how systems work and willing to reason carefully, you’re welcome.
-
-Useful contributions include:
-
-- Kernel and architecture code
-- Drivers
-- Testing and experimentation
-- Documentation of design decisions
-- Thoughtful critique
-
-No prior kernel experience is required.  
-Clear thinking and respect for complexity are.
-
----
-## Founder
-
-**Alexander Ramancha**
-
-Computer enthusiast exploring how systems work at a fundamental level. Currently learning operating system design, ARM64, and low-level programming by building NXU in public. More curious than experienced — focused on understanding deeply and improving step by step.
-
-***Reality defines the constraints. Engineering designs the solution.***
-
----
-
-**Users should own their systems.**
-**Systems should not own their users.**
-
-— NXU (Not eXactly Unix)
-
+Build commands for *this* workspace live in [BUILD.md](BUILD.md), so the GitHub page can stay a statement instead of a makefile.
