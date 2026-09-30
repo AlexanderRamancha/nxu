@@ -18,6 +18,7 @@
  */
 
 #include <nxu/interrupt.h>
+#include <nxu/interrupt_internal.h>
 #include <nxu/interrupt_manager.h>
 #include <nxu/interrupt_backend.h>
 #include <nxu/mmio.h>
@@ -25,20 +26,6 @@
 
 #include "gic.h"
 #include "gic_reg.h"
-
-static enum nxu_interrupt_type
-gic_classify_intid(
-    nxu_u32 intid
-)
-{
-    if (intid < 16U)
-        return NXU_INTERRUPT_SGI;
-
-    if (intid < 32U)
-        return NXU_INTERRUPT_PPI;
-
-    return NXU_INTERRUPT_SPI;
-}
 
 /* gicd_priority_address: function. */
 static nxu_uptr
@@ -491,59 +478,6 @@ nxu_gic_configure_local_ppi(
     return 0;
 }
 
-/* nxu_gic_create_interrupt: function. */
-int
-nxu_gic_create_interrupt(
-    nxu_u32 intid,
-    struct nxu_interrupt *interrupt
-)
-{
-
-    if (interrupt == 0)
-        return -1;
-
-    if (intid >=
-        nxu_gic.interrupt_count)
-        return -1;
-
-    interrupt->intid =
-        intid;
-
-    interrupt->type =
-        gic_classify_intid(intid);
-
-    if (interrupt->type ==
-        NXU_INTERRUPT_SGI) {
-
-        interrupt->trigger =
-            NXU_INTERRUPT_EDGE;
-
-    } else {
-
-        interrupt->trigger =
-            NXU_INTERRUPT_LEVEL;
-    }
-
-    interrupt->priority =
-        0U;
-
-    interrupt->target_cpu =
-        0U;
-
-    interrupt->state =
-        NXU_INTERRUPT_DISABLED;
-
-    interrupt->handler =
-        0;
-
-    interrupt->handler_context =
-        0;
-
-    return nxu_interrupt_register(
-        interrupt
-    );
-}
-
 /* gic_configure_interrupt: function. */
 static int
 gic_configure_interrupt(
@@ -761,6 +695,34 @@ gic_disable_interrupt(
     return -1;
 }
 
+static nxu_u32
+gic_acknowledge(void)
+{
+    nxu_u64 value;
+
+    asm volatile(
+        "mrs %0, ICC_IAR1_EL1"
+        : "=r"(value)
+        :
+        : "memory"
+    );
+
+    return (nxu_u32)value;
+}
+
+static void
+gic_complete(nxu_u32 intid)
+{
+    asm volatile(
+        "msr ICC_EOIR1_EL1, %0"
+        :
+        : "r"((nxu_u64)intid)
+        : "memory"
+    );
+
+    asm volatile("isb" ::: "memory");
+}
+
 static const struct nxu_interrupt_backend
 gic_backend = {
 
@@ -771,7 +733,13 @@ gic_backend = {
         gic_enable_interrupt,
 
     .disable =
-        gic_disable_interrupt
+        gic_disable_interrupt,
+
+    .acknowledge =
+        gic_acknowledge,
+
+    .complete =
+        gic_complete
 };
 
 /* nxu_gic_interrupt_backend_init: function. */
