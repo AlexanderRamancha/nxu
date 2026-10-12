@@ -1,0 +1,121 @@
+a
+nxu
+Not eXactly Unix
+THE ZERO ONE
+[NXU] Entered
+[NXU] DTB validated
+[NXU] RAM detected
+[NXU] EL1 translation established
+[NXU] EL1 exception vectors established
+[NXU] Detecting processor topology.
+[NXU] CPU 0 is present with MPIDR affinity Aff3.0 Aff2.0 Aff1.0 Aff0.0.
+[NXU] CPU 1 is present with MPIDR affinity Aff3.0 Aff2.0 Aff1.0 Aff0.1.
+[NXU] CPU 2 is present with MPIDR affinity Aff3.0 Aff2.0 Aff1.0 Aff0.2.
+[NXU] CPU 3 is present with MPIDR affinity Aff3.0 Aff2.0 Aff1.0 Aff0.3.
+[NXU] Detected cluster 0 with 4 processors.
+[NXU] CPU 0 accepted for initialization.
+[NXU] CPU 1 accepted for initialization.
+[NXU] CPU 2 accepted for initialization.
+[NXU] CPU 3 accepted for initialization.
+[NXU] GICv3 detected
+[NXU] CPU 0 established its GIC redistributor association.
+[NXU] CPU 1 established its GIC redistributor association.
+[NXU] CPU 2 established its GIC redistributor association.
+[NXU] CPU 3 established its GIC redistributor association.
+[NXU] GICv3 established
+[NXU] CNTP established
+  Interrupt source PPI 30
+[NXU] CNTP deadline observed
+[NXU] CPU 0 is now online.
+[NXU] CPU 1 entered the NXU kernel.
+[NXU] CPU 1 established its EL1 execution state.
+[NXU] CPU 1 established its exception vectors.
+[NXU] CPU 1 is now online.
+[NXU] CPU 2 entered the NXU kernel.
+[NXU] CPU 2 established its EL1 execution state.
+[NXU] CPU 2 established its exception vectors.
+[NXU] CPU 2 is now online.
+[NXU] CPU 3 entered the NXU kernel.
+[NXU] CPU 3 established its EL1 execution state.
+[NXU] CPU 3 established its exception vectors.
+[NXU] CPU 3 is now online.
+[NXU] Sending an IPI from CPU 0 to CPU 0.
+[NXU] CPU 0 received the IPI from CPU 0.
+[NXU] Sending an IPI from CPU 0 to CPU 1.
+[NXU] CPU 1 received the IPI from CPU 0.
+[NXU] Sending an IPI from CPU 0 to CPU 2.
+[NXU] CPU 2 received the IPI from CPU 0.
+[NXU] Sending an IPI from CPU 0 to CPU 3.
+[NXU] CPU 3 received the IPI from CPU 0.
+[NXU] Sending an IPI from CPU 0 to CPU 1.
+[NXU] CPU 1 received the IPI from CPU 0.
+[NXU] Sending an IPI from CPU 1 to CPU 0.
+[NXU] CPU 0 received the IPI from CPU 1.
+[NXU] SMP execution established across 4 processors.
+[NXU] NXU kernel execution is established.
+[NXU] The spatial boundary is established.
+[NXU] Room 0 now owns its execution region.
+[NXU] Room 1 now owns its execution region.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 had an access outside its region contained.
+[NXU] Room 1 was refused entry.
+[NXU] Room 0 entered its execution region.
+[NXU] The Pulse was rejected. Its destination or payload is not permitted.
+[NXU] Room 0 entered its execution region.
+[NXU] The Pulse was rejected. Its destination or payload is not permitted.
+[NXU] Room 0 entered its execution region.
+[NXU] The Pulse was rejected.
+[NXU] Room 1 was refused entry.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 named Room 1 through an authorized Pulse.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 named Room 1 through an authorized Pulse.
+[NXU] Room 1 entered its execution region.
+[NXU] Room 1 returned by its own request.
+[NXU] Room 1 was refused entry.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 named Room 1 through an authorized Pulse.
+[NXU] Room 1 entered its execution region.
+[NXU] Room 1 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 named Room 1 through an authorized Pulse.
+[NXU] Room 1 entered its execution region.
+[NXU] Room 1 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 named Room 1 through an authorized Pulse.
+[NXU] Room 1 entered its execution region.
+[NXU] Room 1 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 named Room 1 through an authorized Pulse.
+[NXU] Room 1 entered its execution region.
+[NXU] Room 1 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 named Room 1 through an authorized Pulse.
+[NXU] Room 1 entered its execution region.
+[NXU] Room 1 had an access outside its region contained.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 named Room 1 through an authorized Pulse.
+[NXU] Room 1 entered its execution region.
+[NXU] The Pulse was rejected.
+[NXU] Room 1 was refused entry.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 named Room 1 through an authorized Pulse.
+[NXU] Room 1 entered its execution region.
+[NXU] Room 1 was presented with an interrupt it does not own, and the kernel reclaimed execution.
+[NXU] Room 0 entered its execution region.
+[NXU] Room 0 named Room 1 through an authorized Pulse.
+[NXU] Room 1 entered its execution region.
+[NXU] Room 1 reached its temporal deadline, and the kernel reclaimed execution.
+[NXU] The first NXU application has completed.
