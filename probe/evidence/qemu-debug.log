@@ -1,0 +1,58 @@
+[NXU][BOOT] NXU boot starting @ 0x0000000040200000
+[NXU][FACT] DTB accepted @ 0x0000000044000000
+[NXU][FACT] RAM accepted @ 0x0000000040000000
+[NXU][MMU] Translation armed @ 0x0000000040208000
+[NXU][DBG][MMU] identity map of image and accepted MMIO
+    ttbr=0x0000000040208000
+    el=0x0000000000000001
+[NXU][EXC] Exception vectors installed @ 0x0000000040201800
+[NXU][DBG][EXC] VBAR programmed
+    vbar=0x0000000040201800
+    el=0x0000000000000001
+[NXU][CPU] CPU topology observed @ 0x0000000000000004
+[NXU][DBG][CPU] present set
+    present=0x0000000000000004
+    boot_mpidr=0x0000000000000000
+[NXU][GIC] GIC discovered @ 0x0000000008000000
+[NXU][DBG][GIC] distributor
+    gicd=0x0000000008000000
+    gicr=0x00000000080a0000
+    iidr=0x000000000000043b
+[NXU][TIME] Timer configured @ 0x000000000000001e
+[NXU][DBG][TIME] one-shot deadline
+    freq=0x0000000003b9aca0
+    ppi=0x000000000000001e
+[NXU][TIME] Timer fired @ 0x0000000000b2bdf9
+[NXU][DBG][TIME] deadline observed
+    spins=0x0000000000347892
+[NXU][DBG][SMP] CPU_ON issued
+    cpu=0x0000000000000001
+    mpidr=0x0000000000000001
+[NXU][DBG][SMP] CPU_ON issued
+    cpu=0x0000000000000002
+    mpidr=0x0000000000000002
+[NXU][DBG][SMP] CPU_ON issued
+    cpu=0x0000000000000003
+    mpidr=0x0000000000000003
+[NXU][SMP] CPU online @ 0x0000000000000001
+[NXU][DBG][SMP] CPU online
+    cpu=0x0000000000000001
+    mpidr=0x0000000000000001
+    state=0x0000000000000005
+[NXU][SMP] CPU online @ 0x0000000000000002
+[NXU][DBG][SMP] CPU online
+    cpu=0x0000000000000002
+    mpidr=0x0000000000000002
+    state=0x0000000000000005
+[NXU][SMP] CPU online @ 0x0000000000000003
+[NXU][DBG][SMP] CPU online
+    cpu=0x0000000000000003
+    mpidr=0x0000000000000003
+    state=0x0000000000000005
+[NXU][SMP] CPU set online @ 0x0000000000000004
+[NXU][SMP] IPI reached CPU @ 0x0000000000000001
+[NXU][S14] Foundation frozen @ 0x0000000040000000
+[NXU][DBG][S14] freeze
+    present=0x0000000000000004
+    ram=0x0000000040000000
+qemu-system-aarch64: terminating on signal 15 from pid 1781 (timeout)

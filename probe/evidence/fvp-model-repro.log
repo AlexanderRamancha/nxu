@@ -1,0 +1,17 @@
+
+Info: FVP_Base_RevC_2xAEMvA: terminal_0: Listening for serial connection on port 5000
+
+Info: FVP_Base_RevC_2xAEMvA: terminal_1: Listening for serial connection on port 5001
+
+Info: FVP_Base_RevC_2xAEMvA: terminal_2: Listening for serial connection on port 5002
+
+Info: FVP_Base_RevC_2xAEMvA: terminal_3: Listening for serial connection on port 5003
+
+
+Info: FVP_Base_RevC_2xAEMvA: Simulation received signal 15
+Terminating simulation...
+
+Info: FVP_Base_RevC_2xAEMvA: Stopping simulation...
+
+
+Info: /OSCI/SystemC: Simulation stopped by user.

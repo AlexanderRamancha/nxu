@@ -1,8 +1,5 @@
 build/
-*.o
-*.elf
-*.bin
-*.img
-*~
-*.swp
-.DS_Store
+probe/host/zig/
+probe/host/qemu/
+*.tar.xz
+*.tgz
