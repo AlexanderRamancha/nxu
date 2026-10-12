@@ -1,6 +1,8 @@
 # NXU — Not eXactly Unix
 
-NXU is a small ARM64 separation substrate under active development. It is not a Unix clone, not a microkernel with a process table, and not a capability-based operating system. The name is an architectural statement: NXU is investigating a different composition of authority, isolation, and execution boundaries than the inode/UID/chmod model that Unix established and refined.
+**NXU is a from-scratch ARM64 kernel exploring a privacy-oriented separation architecture.** It is actively evolving from its current two-Room experiment toward a more general separation-kernel model. It is not a Unix clone, not a Linux or Android fork, and not a capability-based operating system. The name is an architectural statement: NXU is investigating a different composition of authority, isolation, and execution boundaries than the inode/UID/chmod model that Unix established and refined.
+
+The `main` branch presents NXU's **current architecture**. Earlier implementations and experiments remain in Git history and archival references so the project's evolution can be examined without confusing historical code with the current design. The archive branch name records publication history; it is not NXU's current project identity.
 
 Unix (and the research that followed it) contributed hardware protection rings, address-space isolation, access-control lists, and decades of measured security practice. NXU does not claim to have invented isolation, separation kernels, or hardware-enforced boundaries, nor does it claim to be the first system of its kind. It is exploring one particular composition: explicit, bounded ownership relationships; a fixed topology; droppable, kernel-mediated communication; and hardware page-table enforcement, with a developing model for temporal preemption. Formal proof has not been performed. The measurements recorded so far demonstrate only the behaviors that were tested on the captured tree.
 
