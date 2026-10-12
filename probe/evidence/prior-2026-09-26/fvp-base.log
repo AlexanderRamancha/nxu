@@ -1,0 +1,13 @@
+terminal_0: Listening for serial connection on port 5000
+terminal_1: Listening for serial connection on port 5001
+terminal_2: Listening for serial connection on port 5002
+terminal_3: Listening for serial connection on port 5003
+
+Stopping simulation...
+
+
+Simulation received signal 15
+Terminating simulation...
+
+
+Info: /OSCI/SystemC: Simulation stopped by user.
